@@ -1,9 +1,67 @@
 import os
+import olefile
+import zlib
+import struct
 from docx import Document
 from docx.shared import RGBColor
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+def editHwpFiles(name, dic):
+    filenames = os.listdir(os.getcwd())
+
+    for filename in filenames:
+        full_filename = os.path.join(name, filename)
+        ext = os.path.splitext(full_filename)[-1]
         
+        if (ext == '.hwp'):
+            # print(full_filename)
+            
+            hwp = olefile.OleFileIO(full_filename)
+            dirs = hwp.listdir()
+            
+            header = hwp.openstream("Fileheader")
+            header_data = header.read()
+            is_compressed = (header_data[36] & 1) == 1
+            
+            nums = []
+            for d in dirs:
+                if d[0] == "BodyText":
+                    nums.append(int(d[1][len("Section"):]))
+                    
+            sections = ["BodyText/Section"+str(x) for x in sorted(nums)]
+            
+            text = ""
+            
+            for section in sections:
+                bodytext = hwp.openstream(section)
+                data = bodytext.read()
+                if is_compressed:
+                    unpacked_data = zlib.decompress(data, -15)
+                else:
+                    unpacked_data = data
+            
+                # 각 Section 내 text 추출    
+                section_text = ""
+                i = 0
+                size = len(unpacked_data)
+                while i < size:
+                    header = struct.unpack_from("<I", unpacked_data, i)[0]
+                    rec_type = header & 0x3ff
+                    rec_len = (header >> 20) & 0xfff
+
+                    if rec_type in [67]:
+                        rec_data = unpacked_data[i+4:i+4+rec_len]
+                        section_text += rec_data.decode('utf-16')
+                        section_text += "\n"
+
+                    i += 4 + rec_len
+
+                text += section_text
+                text += "\n"
+
+            print(text)
+
 def readTxtFile(path, dic):
     file = open(path, "r", encoding='UTF-8')
     while True:
@@ -19,7 +77,7 @@ def readTxtFile(path, dic):
 
     file.close()
     
-def editWordFile(name, dic):
+def editWordFiles(name, dic):
     filenames = os.listdir(os.getcwd())
 
     for filename in filenames:
@@ -27,7 +85,7 @@ def editWordFile(name, dic):
         ext = os.path.splitext(full_filename)[-1]
         
         if (ext == '.docx'):
-            ## print(full_filename)
+            # print(full_filename)
 
             document = Document(full_filename)
 
@@ -37,8 +95,8 @@ def editWordFile(name, dic):
                         index = p.text.index(i)
                         end_index = index + len(i)
                         
-                        ## print('index : ', index)
-                        ## print('end_index : ', end_index)
+                        # print('index : ', index)
+                        # print('end_index : ', end_index)
                         
                         if index == 0:
                             rest_context = p.text.replace(i, '')
@@ -86,9 +144,10 @@ def editWordFile(name, dic):
     
 if __name__ == "__main__":
     
-    Dictionary = {}
+    myDictionary = {}
     dirname = os.getcwd()
     notepath = dirname + '\\note.txt'
     
-    readTxtFile(notepath, Dictionary)
-    editWordFile(dirname, Dictionary)
+    readTxtFile(notepath, myDictionary)
+    editWordFiles(dirname, myDictionary)
+    editHwpFiles(dirname, myDictionary)
