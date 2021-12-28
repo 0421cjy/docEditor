@@ -1,14 +1,14 @@
 import os
-import olefile
-import zlib
-import struct
 from docx import Document
 from docx.shared import RGBColor
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import win32com.client as win32
+from shutil import copyfile
 
 def editHwpFiles(name, dic):
     filenames = os.listdir(os.getcwd())
+    fileformat = '.hwp'
 
     for filename in filenames:
         full_filename = os.path.join(name, filename)
@@ -17,51 +17,32 @@ def editHwpFiles(name, dic):
         if (ext == '.hwp'):
             # print(full_filename)
             
-            hwp = olefile.OleFileIO(full_filename)
-            dirs = hwp.listdir()
+            hwp = win32.gencache.EnsureDispatch("HWPFrame.HwpObject")
+            hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
             
-            header = hwp.openstream("Fileheader")
-            header_data = header.read()
-            is_compressed = (header_data[36] & 1) == 1
+            editname = full_filename.replace(fileformat, '')
+            resultname = editname + '_수정본' + fileformat
             
-            nums = []
-            for d in dirs:
-                if d[0] == "BodyText":
-                    nums.append(int(d[1][len("Section"):]))
+            copyfile(full_filename, resultname)
+            
+            hwp.Open(resultname)
+            hwp.InitScan()
+            
+            for i in dic:
+                hwp.HAction.GetDefault("AllReplace", hwp.HParameterSet.HFindReplace.HSet)
+                option=hwp.HParameterSet.HFindReplace
+                option.FindString = i
+                option.ReplaceString = dic[i]
+                option.ReplaceCharShape.TextColor = hwp.RGBColor(255, 0, 0)
+                option.ReplaceCharShape.Bold = 1
+                option.IgnoreMessage = 1
+                hwp.HAction.Execute("AllReplace", hwp.HParameterSet.HFindReplace.HSet)
                     
-            sections = ["BodyText/Section"+str(x) for x in sorted(nums)]
+            hwp.ReleaseScan()
             
-            text = ""
+            hwp.Clear(3)
+            hwp.Quit()
             
-            for section in sections:
-                bodytext = hwp.openstream(section)
-                data = bodytext.read()
-                if is_compressed:
-                    unpacked_data = zlib.decompress(data, -15)
-                else:
-                    unpacked_data = data
-            
-                # 각 Section 내 text 추출    
-                section_text = ""
-                i = 0
-                size = len(unpacked_data)
-                while i < size:
-                    header = struct.unpack_from("<I", unpacked_data, i)[0]
-                    rec_type = header & 0x3ff
-                    rec_len = (header >> 20) & 0xfff
-
-                    if rec_type in [67]:
-                        rec_data = unpacked_data[i+4:i+4+rec_len]
-                        section_text += rec_data.decode('utf-16')
-                        section_text += "\n"
-
-                    i += 4 + rec_len
-
-                text += section_text
-                text += "\n"
-
-            print(text)
-
 def readTxtFile(path, dic):
     file = open(path, "r", encoding='UTF-8')
     while True:
@@ -79,12 +60,13 @@ def readTxtFile(path, dic):
     
 def editWordFiles(name, dic):
     filenames = os.listdir(os.getcwd())
+    fileformat = '.docx'
 
     for filename in filenames:
         full_filename = os.path.join(name, filename)
         ext = os.path.splitext(full_filename)[-1]
         
-        if (ext == '.docx'):
+        if (ext == fileformat):
             # print(full_filename)
 
             document = Document(full_filename)
@@ -137,8 +119,8 @@ def editWordFiles(name, dic):
                             font.color.rgb = RGBColor(0, 0, 0)
                             font.size = Pt(12)
 
-            editname = filename.replace('.docx', '')
-            resultname = editname + '_수정본.docx'
+            editname = filename.replace(fileformat, '')
+            resultname = editname + '_수정본' + fileformat
             
             document.save(resultname)
     
