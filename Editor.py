@@ -17,7 +17,26 @@ def readTxtFile(path, dic):
         raw_res = line.strip()
         pair = raw_res.split(':')
         
-        ## print(pair[0], pair[1])
+        if pair[0] == '':
+            continue
+        
+        # print(pair[0], pair[1])
+        dic[pair[0]] = pair[1]
+
+    file.close()
+    
+def readExcelFile(path, dic):
+    file = open(path, "r", encoding='UTF-8')
+    
+    while True:
+        line = file.readline()
+        if not line:
+            break
+        
+        raw_res = line.strip()
+        pair = raw_res.split(':')
+        
+        # print(pair[0], pair[1])
         dic[pair[0]] = pair[1]
 
     file.close()
@@ -71,13 +90,13 @@ def editWordFiles(name, dic):
 
             document = Document(full_filename)
 
-            for i in dic:
-                for p in document.paragraphs:
-                    for j in p.runs:
-                        if j.text.find(i) >= 0:
-                            text = j.text.replace(i, dic[i])
-                            j.text = text
-                            j.font.color.rgb = RGBColor(255, 0, 0)
+            for p in document.paragraphs:
+                for run in p.runs:
+                    for i in dic:
+                        if run.text.find(i) >= 0:
+                            text = run.text.replace(i, dic[i])
+                            run.text = text
+                            run.font.color.rgb = RGBColor(255, 0, 0)
 
             editname = filename.replace(fileformat, '')
             resultname = editname + '_수정본' + fileformat
@@ -94,26 +113,26 @@ def editRtfFiles(name, dic):
         
         if (ext == fileformat):
             word = win32.Dispatch("Word.Application")
-            wdFormatDocumentDefault = 16
-            wdHeaderFooterPrimary = 1
             doc = word.Documents.Open(full_filename)
             
             editname = full_filename.replace(fileformat, '')
             resultname = editname + '_수정본' + '.docx'
+            
+            wdFormatDocumentDefault = 16
             
             doc.SaveAs(resultname, FileFormat=wdFormatDocumentDefault)
             doc.Close()
             word.Quit()
             
             document = Document(resultname)
-
-            for i in dic:
-                for p in document.paragraphs:
-                    for j in p.runs:
-                        if j.text.find(i) >= 0:
-                            text = j.text.replace(i, dic[i])
-                            j.text = text
-                            j.font.color.rgb = RGBColor(255, 0, 0)
+            
+            for p in document.paragraphs:
+                for run in p.runs:
+                    for i in dic:
+                        if run.text.find(i) >= 0:
+                            text = run.text.replace(i, dic[i])
+                            run.text = text
+                            run.font.color.rgb = RGBColor(255, 0, 0)
             
             document.save(resultname)
             os.remove(resultname)
@@ -129,6 +148,7 @@ if __name__ == "__main__":
     notepath = dirname + '\\note.txt'
     
     readTxtFile(notepath, myDictionary)
+    #readExcelFile(notepath, myDictionary)
     editWordFiles(dirname, myDictionary)
     editHwpFiles(dirname, myDictionary)
     editRtfFiles(dirname, myDictionary)
