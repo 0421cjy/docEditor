@@ -87,17 +87,86 @@ def editWordFiles(name, dic):
         
         if (ext == fileformat):
             # print(full_filename)
-
             document = Document(full_filename)
 
-            for p in document.paragraphs:
-                for run in p.runs:
-                    for i in dic:
-                        if run.text.find(i) >= 0:
-                            text = run.text.replace(i, dic[i])
-                            run.text = text
-                            run.font.color.rgb = RGBColor(255, 0, 0)
+            paragraphs = list(document.paragraphs)
+            for p in paragraphs:
+                for key, val in dic.items():
+                    if key in p.text:
+                        run = p.runs
+                        started = False
+                        key_index = 0
+                        found_runs = list()
+                        found_all = False
+                        
+                        for i in range(len(run)):
+                            
+                            # case 2: search for partial text, find first run
+                            if key[key_index] in run[i].text and run[i].text[-1] in key and not started:
+                                # check sequence
+                                start_index = run[i].text.find(key[key_index])
+                                check_length = len(run[i].text)
+                                
+                                #print("1:" + run[i].text)
+                                #print("2:" + key[key_index])
+                                
+                                for text_index in range(start_index, check_length):
+                                    if run[i].text[text_index] != key[key_index]:
+                                        # no match so must be false positive
+                                        break
+                                if key_index == 0:
+                                    started = True
+                                
+                                chars_found = check_length - start_index
+                                
+                                if len(key) < chars_found:
+                                    chars_found = len(key)
+                                
+                                key_index += chars_found
+                                found_runs.append((i, start_index, chars_found))
+                                
+                                if key_index != len(key):
+                                    continue
+                                else:
+                                    # found all chars in key_name
+                                    found_all = True
+                                    break
 
+                            # case 2: search for partial text, find subsequent run
+                            if key[key_index] in run[i].text and started and not found_all:
+                                # check sequence
+                                chars_found = 0
+                                check_length = len(run[i].text)
+                                
+                                for text_index in range(0, check_length):
+                                    
+                                    if len(key) < key_index + 1:
+                                        key_index = len(key) - 1
+                                    
+                                    if run[i].text[text_index] == key[key_index]:
+                                        key_index += 1
+                                        chars_found += 1
+                                    else:
+                                        break
+                                # no match so must be end
+                                found_runs.append((i, 0, chars_found))
+                                if key_index == len(key):
+                                    found_all = True
+                                    break
+
+                        if found_all:
+                            for i, item in enumerate(found_runs):
+                                index, start, length = [t for t in item]
+                                if i == 0:
+                                    text = run[index].text.replace(run[index].text[start:start + length], str(val))
+                                    run[index].text = text
+                                    run[index].font.color.rgb = RGBColor(255, 0, 0)
+                                else:
+                                    text = run[index].text.replace(run[index].text[start:start + length], '')
+                                    run[index].text = text
+                                    run[index].font.color.rgb = RGBColor(255, 0, 0)
+                        # print(p.text)
+                        
             editname = filename.replace(fileformat, '')
             resultname = editname + '_수정본' + fileformat
             
@@ -126,13 +195,83 @@ def editRtfFiles(name, dic):
             
             document = Document(resultname)
             
-            for p in document.paragraphs:
-                for run in p.runs:
-                    for i in dic:
-                        if run.text.find(i) >= 0:
-                            text = run.text.replace(i, dic[i])
-                            run.text = text
-                            run.font.color.rgb = RGBColor(255, 0, 0)
+            paragraphs = list(document.paragraphs)
+            for p in paragraphs:
+                for key, val in dic.items():
+                    if key in p.text:
+                        run = p.runs
+                        started = False
+                        key_index = 0
+                        found_runs = list()
+                        found_all = False
+                        
+                        for i in range(len(run)):
+                            
+                            # case 2: search for partial text, find first run
+                            if key[key_index] in run[i].text and run[i].text[-1] in key and not started:
+                                # check sequence
+                                start_index = run[i].text.find(key[key_index])
+                                check_length = len(run[i].text)
+                                
+                                #print("1:" + run[i].text)
+                                #print("2:" + key[key_index])
+                                
+                                for text_index in range(start_index, check_length):
+                                    if run[i].text[text_index] != key[key_index]:
+                                        # no match so must be false positive
+                                        break
+                                if key_index == 0:
+                                    started = True
+                                
+                                chars_found = check_length - start_index
+                                
+                                if len(key) < chars_found:
+                                    chars_found = len(key)
+                                
+                                key_index += chars_found
+                                found_runs.append((i, start_index, chars_found))
+                                
+                                if key_index != len(key):
+                                    continue
+                                else:
+                                    # found all chars in key_name
+                                    found_all = True
+                                    break
+
+                            # case 2: search for partial text, find subsequent run
+                            if key[key_index] in run[i].text and started and not found_all:
+                                # check sequence
+                                chars_found = 0
+                                check_length = len(run[i].text)
+                                
+                                for text_index in range(0, check_length):
+                                    
+                                    if len(key) < key_index + 1:
+                                        key_index = len(key) - 1
+                                    
+                                    if run[i].text[text_index] == key[key_index]:
+                                        key_index += 1
+                                        chars_found += 1
+                                    else:
+                                        break
+                                # no match so must be end
+                                found_runs.append((i, 0, chars_found))
+                                if key_index == len(key):
+                                    found_all = True
+                                    break
+
+                        if found_all:
+                            for i, item in enumerate(found_runs):
+                                index, start, length = [t for t in item]
+                                if i == 0:
+                                    text = run[index].text.replace(run[index].text[start:start + length], str(val))
+                                    run[index].text = text
+                                    run[index].font.color.rgb = RGBColor(255, 0, 0)
+                                else:
+                                    text = run[index].text.replace(run[index].text[start:start + length], '')
+                                    run[index].text = text
+                                    run[index].font.color.rgb = RGBColor(255, 0, 0)
+                        # print(p.text)
             
             document.save(resultname)
             os.remove(resultname)
@@ -140,7 +279,7 @@ def editRtfFiles(name, dic):
             editname = full_filename.replace(fileformat, '')
             resultname = editname + '_수정본' + '.rtf'
             document.save(resultname)
-    
+
 if __name__ == "__main__":
     
     myDictionary = {}
